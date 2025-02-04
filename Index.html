@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            background: #000;
+            color: #0ff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .timer-display {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .timer-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .arrow {
+            cursor: pointer;
+            font-size: 24px;
+            padding: 5px;
+            user-select: none;
+        }
+        .timer-value {
+            margin: 10px 0;
+        }
+        .colon {
+            margin: 0 10px;
+        }
+        .start-btn {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .timer-list {
+            margin-top: 20px;
+        }
+        .timer-item {
+            background: #111;
+            padding: 10px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .restart-btn, .delete-btn {
+            background: none;
+            border: none;
+            color: #0ff;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 5px;
+        }
+        .initial-time {
+            color: #666;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-display">
+        <div class="timer-section">
+            <div class="arrow" onclick="adjustTime('minutes', 1)">▲</div>
+            <div class="timer-value" id="minutes">15</div>
+            <div class="arrow" onclick="adjustTime('minutes', -1)">▼</div>
+        </div>
+        <div class="colon">:</div>
+        <div class="timer-section">
+            <div class="arrow" onclick="adjustTime('seconds', 1)">▲</div>
+            <div class="timer-value" id="seconds">00</div>
+            <div class="arrow" onclick="adjustTime('seconds', -1)">▼</div>
+        </div>
+    </div>
+    <button class="start-btn" onclick="startNewTimer()">START</button>
+    <div class="timer-list" id="timerList"></div>
+
+    <script>
+        let timers = [];
+        let nextTimerId = 0;
+
+        function formatTime(minutes, seconds) {
+            return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function adjustTime(unit, delta) {
+            const minutesEl = document.getElementById('minutes');
+            const secondsEl = document.getElementById('seconds');
+            
+            if (unit === 'minutes') {
+                let minutes = parseInt(minutesEl.textContent) + delta;
+                minutes = Math.max(0, Math.min(99, minutes));
+                minutesEl.textContent = String(minutes).padStart(2, '0');
+            } else {
+                let seconds = parseInt(secondsEl.textContent) + delta;
+                if (seconds >= 60) seconds = 0;
+                if (seconds < 0) seconds = 59;
+                secondsEl.textContent = String(seconds).padStart(2, '0');
+            }
+        }
+
+        function startNewTimer() {
+            const minutes = parseInt(document.getElementById('minutes').textContent);
+            const seconds = parseInt(document.getElementById('seconds').textContent);
+            const totalSeconds = minutes * 60 + seconds;
+            
+            if (totalSeconds === 0) return;
+
+            const timer = {
+                id: nextTimerId++,
+                initialTime: formatTime(minutes, seconds),
+                remainingSeconds: totalSeconds,
+                intervalId: null,
+                isRunning: true
+            };
+
+            timer.intervalId = setInterval(() => updateTimer(timer), 1000);
+            timers.push(timer);
+            updateTimerList();
+        }
+
+        function updateTimer(timer) {
+            timer.remainingSeconds--;
+            
+            if (timer.remainingSeconds <= 0) {
+                clearInterval(timer.intervalId);
+                timer.isRunning = false;
+                timer.remainingSeconds = 0;
+            }
+            
+            updateTimerList();
+        }
+
+        function restartTimer(timerId) {
+            const timer = timers.find(t => t.id === timerId);
+            if (!timer) return;
+
+            const [minutes, seconds] = timer.initialTime.split(':').map(Number);
+            timer.remainingSeconds = minutes * 60 + seconds;
+            
+            if (!timer.isRunning) {
+                timer.isRunning = true;
+                timer.intervalId = setInterval(() => updateTimer(timer), 1000);
+            }
+            
+            updateTimerList();
+        }
+
+        function deleteTimer(timerId) {
+            const index = timers.findIndex(t => t.id === timerId);
+            if (index === -1) return;
+
+            clearInterval(timers[index].intervalId);
+            timers.splice(index, 1);
+            updateTimerList();
+        }
+
+        function updateTimerList() {
+            const listEl = document.getElementById('timerList');
+            listEl.innerHTML = '';
+
+            timers.forEach(timer => {
+                const minutes = Math.floor(timer.remainingSeconds / 60);
+                const seconds = timer.remainingSeconds % 60;
+                const currentTime = formatTime(minutes, seconds);
+
+                const timerEl = document.createElement('div');
+                timerEl.className = 'timer-item';
+                timerEl.innerHTML = `
+                    <div>
+                        <span>${currentTime}</span>
+                        <span class="initial-time">(${timer.initialTime})</span>
+                    </div>
+                    <div>
+                        <button class="restart-btn" onclick="restartTimer(${timer.id})">↻</button>
+                        <button class="delete-btn" onclick="deleteTimer(${timer.id})">×</button>
+                    </div>
+                `;
+                listEl.appendChild(timerEl);
+            });
+        }
+    </script>
+</body>
+</html>
